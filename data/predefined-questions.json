@@ -1,0 +1,47 @@
+[
+  {
+    "id": "personal-info",
+    "text": "Let's start with your personal information. Please share your name, email, phone number, and location.",
+    "type": "personal"
+  },
+  {
+    "id": "education",
+    "text": "Let's add your educational background. Please share your degrees, institutions, graduation years, and any academic achievements.",
+    "type": "education"
+  },
+  {
+    "id": "work-experience",
+    "text": "Now, let's discuss your work experience. Please share your job titles, company names, employment dates, and key responsibilities or achievements.",
+    "type": "experience"
+  },
+  {
+    "id": "skills",
+    "text": "What skills would you like to highlight on your resume? Include both technical and soft skills that are relevant to your target position.",
+    "type": "skills"
+  },
+  {
+    "id": "projects",
+    "text": "Do you have any significant projects you'd like to include? Please share project names, your role, technologies used, and key outcomes.",
+    "type": "projects"
+  },
+  {
+    "id": "certifications",
+    "text": "Do you have any certifications or specialized training you'd like to include? Please share certification names, issuing organizations, and dates.",
+    "type": "certifications"
+  },
+  {
+    "id": "achievements",
+    "text": "What professional or academic achievements would you like to highlight? These could include awards, recognition, or significant accomplishments.",
+    "type": "achievements"
+  },
+  {
+    "id": "summary",
+    "text": "Let's create a professional summary that highlights your background, skills, and career goals in a few sentences.",
+    "type": "summary"
+  },
+  {
+    "id": "additional",
+    "text": "Is there any additional information you'd like to include in your resume? This could be languages, volunteer work, hobbies, or anything else relevant.",
+    "type": "additional"
+  }
+]

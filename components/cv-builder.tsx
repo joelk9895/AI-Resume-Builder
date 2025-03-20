@@ -1,18 +1,38 @@
-"use client"
+"use client";
 
-import { useState, useRef, useEffect } from "react"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Download, Layout, LayoutTemplate } from "lucide-react"
-import dynamic from 'next/dynamic'
-import { ResumeQuestion, RESUME_QUESTIONS } from './types'
-import { TemplateMarketplace } from './template-marketplace'
-import { RESUME_TEMPLATES } from './templates'
+import { useState, useRef, useEffect } from "react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Download, LayoutTemplate } from "lucide-react";
+import dynamic from "next/dynamic";
+import { TemplateMarketplace } from "./template-marketplace";
+import { RESUME_TEMPLATES } from "./templates";
+import { getQuestions, ResumeQuestion } from "@/lib/questions";
 
 // Dynamically import html2pdf with no SSR
-const html2pdf = dynamic(() => import('html2pdf.js'), {
+const html2pdf = dynamic(() => import("html2pdf.js"), {
   ssr: false,
-})
+});
+
+// Loading component
+const LoadingSpinner = () => (
+  <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
+    <div className="bg-white rounded-2xl p-8 shadow-xl max-w-md w-full">
+      <div className="flex flex-col items-center">
+        <div className="relative w-16 h-16 mb-6">
+          <div className="absolute top-0 left-0 w-full h-full rounded-full border-4 border-gray-200"></div>
+          <div className="absolute top-0 left-0 w-full h-full rounded-full border-4 border-t-transparent border-r-indigo-600 border-b-indigo-600 border-l-transparent animate-spin"></div>
+        </div>
+        <h3 className="text-lg font-semibold text-gray-800 mb-2">
+          Generating your resume...
+        </h3>
+        <p className="text-gray-500 text-center">
+          Our AI is crafting the perfect resume with your information.
+        </p>
+      </div>
+    </div>
+  </div>
+);
 
 interface FontPair {
   heading: string;
@@ -21,54 +41,76 @@ interface FontPair {
 
 const FONT_PAIRS: { [key: string]: FontPair } = {
   modern: {
-    heading: 'Raleway',
-    body: 'Open Sans'
+    heading: "Poppins",
+    body: "Poppins",
   },
   professional: {
-    heading: 'Lato',
-    body: 'Roboto'
+    heading: "Poppins",
+    body: "Poppins",
   },
   elegant: {
-    heading: 'Playfair Display',
-    body: 'Source Sans Pro'
+    heading: "Poppins",
+    body: "Poppins",
   },
   minimal: {
-    heading: 'Montserrat',
-    body: 'Inter'
+    heading: "Poppins",
+    body: "Poppins",
   },
   creative: {
-    heading: 'Poppins',
-    body: 'Work Sans'
-  }
-}
+    heading: "Poppins",
+    body: "Poppins",
+  },
+};
 
 export default function CVBuilder() {
-  const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0)
-  const [inputMessage, setInputMessage] = useState('')
-  const [messages, setMessages] = useState<{ role: 'user' | 'assistant', content: string }[]>([])
-  const iframeRef = useRef<HTMLIFrameElement>(null)
-  const chatRef = useRef<HTMLDivElement>(null)
-  const [selectedTemplate, setSelectedTemplate] = useState(RESUME_TEMPLATES[0].id)
-  const [isTemplateModalOpen, setIsTemplateModalOpen] = useState(false)
+  const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
+  const [inputMessage, setInputMessage] = useState("");
+  const [messages, setMessages] = useState<
+    { role: "user" | "assistant"; content: string }[]
+  >([]);
+  const iframeRef = useRef<HTMLIFrameElement>(null);
+  const chatRef = useRef<HTMLDivElement>(null);
+  const [selectedTemplate, setSelectedTemplate] = useState(
+    RESUME_TEMPLATES[0].id
+  );
+  const [isTemplateModalOpen, setIsTemplateModalOpen] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [questions, setQuestions] = useState<ResumeQuestion[]>([]);
+
+  // Load questions
+  useEffect(() => {
+    const loadedQuestions = getQuestions();
+    setQuestions(loadedQuestions);
+    
+    // Start with first question if questions are loaded
+    if (loadedQuestions.length > 0) {
+      setMessages([
+        {
+          role: "assistant",
+          content: loadedQuestions[0].text,
+        },
+      ]);
+    }
+  }, []);
 
   const getCurrentHtml = () => {
     if (iframeRef.current?.contentDocument?.body) {
-      return iframeRef.current.contentDocument.body.innerHTML
+      return iframeRef.current.contentDocument.body.innerHTML;
     }
-    return ''
-  }
+    return "";
+  };
 
   const updatePreview = (html: string, fonts?: FontPair) => {
     if (!html) {
-      console.error('No HTML provided to updatePreview')
-      return
+      console.error("No HTML provided to updatePreview");
+      return;
     }
 
-    const currentFonts = fonts || FONT_PAIRS.modern // Default to modern fonts
+    const currentFonts = fonts || FONT_PAIRS.modern; // Default to modern fonts
 
     if (iframeRef.current?.contentDocument) {
-      const doc = iframeRef.current.contentDocument
-      
+      const doc = iframeRef.current.contentDocument;
+
       const completeHtml = `
         <!DOCTYPE html>
         <html>
@@ -78,7 +120,7 @@ export default function CVBuilder() {
             <script src="https://cdn.tailwindcss.com"></script>
             <link rel="preconnect" href="https://fonts.googleapis.com">
             <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-            <link href="https://fonts.googleapis.com/css2?family=${currentFonts.heading.replace(' ', '+')}&family=${currentFonts.body.replace(' ', '+')}&display=swap" rel="stylesheet">
+            <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
             <script>
               tailwind.config = {
                 corePlugins: {
@@ -87,8 +129,8 @@ export default function CVBuilder() {
                 theme: {
                   extend: {
                     fontFamily: {
-                      heading: ['${currentFonts.heading}', 'sans-serif'],
-                      body: ['${currentFonts.body}', 'sans-serif'],
+                      heading: ['Poppins', 'sans-serif'],
+                      body: ['Poppins', 'sans-serif'],
                     },
                   },
                 },
@@ -103,7 +145,7 @@ export default function CVBuilder() {
               body { 
                 margin: 0;
                 padding: 0;
-                font-family: '${currentFonts.body}', sans-serif;
+                font-family: 'Poppins', sans-serif;
                 background-color: #ffffff;
                 min-height: 100vh;
                 display: flex;
@@ -111,8 +153,11 @@ export default function CVBuilder() {
                 align-items: flex-start;
               }
               h1, h2, h3, h4, h5, h6 {
-                font-family: '${currentFonts.heading}', sans-serif;
+                font-family: 'Poppins', sans-serif;
               }
+                a{
+                text-decoration: none;
+                }
               .resume-container {
                 width: 8.5in;
                 height: 11in;
@@ -176,101 +221,122 @@ export default function CVBuilder() {
             </script>
           </body>
         </html>
-      `
-      
-      doc.open()
-      doc.write(completeHtml)
-      doc.close()
+      `;
+
+      doc.open();
+      doc.write(completeHtml);
+      doc.close();
     }
-  }
+  };
 
   const sendMessage = async () => {
-    if (!inputMessage.trim()) return
+    if (!inputMessage.trim() || questions.length === 0) return;
 
-    const currentQuestion = RESUME_QUESTIONS[currentQuestionIndex]
-    const currentHtml = getCurrentHtml()
+    const currentQuestion = questions[currentQuestionIndex];
+    const currentHtml = getCurrentHtml();
 
     // Add user message to chat
-    setMessages(prev => [...prev, { role: 'user', content: inputMessage }])
-    setInputMessage('')
+    setMessages((prev) => [...prev, { role: "user", content: inputMessage }]);
+    setInputMessage("");
+
+    // Show loading state
+    setIsLoading(true);
 
     try {
-      const response = await fetch('/api/chat', {
-        method: 'POST',
+      const response = await fetch("/api/chat", {
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
         },
         body: JSON.stringify({
           message: inputMessage,
           currentHtml,
           fontPairs: FONT_PAIRS,
-          question: currentQuestion // Send current question context
+          question: currentQuestion, // Send current question context
+          template: selectedTemplate, // Send the selected template
+          isMecTemplate: selectedTemplate === "mec-template", // Flag for MEC template
         }),
-      })
+      });
 
-      const data = await response.json()
-      
+      const data = await response.json();
+
       if (data.success && data.html) {
-        updatePreview(data.html, data.fonts)
-        
+        updatePreview(data.html, data.fonts);
+
         // Move to next question if available
-        if (currentQuestionIndex < RESUME_QUESTIONS.length - 1) {
-          const nextQuestion = RESUME_QUESTIONS[currentQuestionIndex + 1]
-          setCurrentQuestionIndex(prev => prev + 1)
-          setMessages(prev => [...prev, { 
-            role: 'assistant', 
-            content: nextQuestion.text
-          }])
+        if (currentQuestionIndex < questions.length - 1) {
+          const nextQuestion = questions[currentQuestionIndex + 1];
+          setCurrentQuestionIndex((prev) => prev + 1);
+
+          // Add next question to chat
+          setMessages((prev) => [
+            ...prev,
+            {
+              role: "assistant",
+              content: nextQuestion.text,
+            },
+          ]);
         } else {
-          setMessages(prev => [...prev, { 
-            role: 'assistant', 
-            content: "Great! Your resume is complete. You can now customize its appearance or download it as PDF."
-          }])
+          setMessages((prev) => [
+            ...prev,
+            {
+              role: "assistant",
+              content:
+                "Great! Your resume is complete. You can now customize its appearance or download it as PDF.",
+            },
+          ]);
         }
       }
 
       if (chatRef.current) {
-        chatRef.current.scrollTop = chatRef.current.scrollHeight
+        chatRef.current.scrollTop = chatRef.current.scrollHeight;
       }
     } catch (error) {
-      console.error('Error:', error)
-      setMessages(prev => [...prev, {
-        role: 'assistant',
-        content: 'Sorry, I encountered an error. Please try again.'
-      }])
+      console.error("Error:", error);
+      setMessages((prev) => [
+        ...prev,
+        {
+          role: "assistant",
+          content: "Sorry, I encountered an error. Please try again.",
+        },
+      ]);
+    } finally {
+      // Hide loading state when done
+      setIsLoading(false);
     }
-  }
+  };
 
   const handleDownloadPDF = async () => {
     if (iframeRef.current?.contentDocument?.body) {
-      const element = iframeRef.current.contentDocument.body.firstElementChild
-      
+      const element = iframeRef.current.contentDocument.body.firstElementChild;
+
       // Dynamically load html2pdf when needed
-      const html2pdfModule = await import('html2pdf.js')
-      const html2pdf = html2pdfModule.default
-      
+      const html2pdfModule = await import("html2pdf.js");
+      const html2pdf = html2pdfModule.default;
+
       const opt = {
         margin: 0.5,
-        filename: 'resume.pdf',
-        image: { type: 'jpeg', quality: 0.98 },
-        html2canvas: { 
+        filename: "resume.pdf",
+        image: { type: "jpeg", quality: 0.98 },
+        html2canvas: {
           scale: 2,
           useCORS: true,
           letterRendering: true,
         },
-        jsPDF: { 
-          unit: 'in', 
-          format: 'letter', 
-          orientation: 'portrait',
-        }
-      }
-      
+        jsPDF: {
+          unit: "in",
+          format: "letter",
+          orientation: "portrait",
+        },
+      };
+
       // Add a temporary class for PDF generation
       if (element) {
-        element.classList.add('pdf-mode')
-        
+        element.classList.add("pdf-mode");
+
         // Add PDF-specific styles to the iframe
-        const styleSheet = iframeRef.current.contentDocument.createElement('style')
+        const styleSheet =
+          iframeRef.current.contentDocument.createElement("style");
         styleSheet.textContent = `
           .pdf-mode {
             width: 8.5in !important;
@@ -291,32 +357,35 @@ export default function CVBuilder() {
             size: letter;
             margin: 0;
           }
-        `
-        iframeRef.current.contentDocument.head.appendChild(styleSheet)
+        `;
+        iframeRef.current.contentDocument.head.appendChild(styleSheet);
 
         // Calculate and apply scaling
-        const contentHeight = element.scrollHeight
-        const pageHeight = 11 * 96 - 96 // 11 inches in pixels minus margins
-        const scale = Math.min(1, pageHeight / contentHeight)
-        element.style.setProperty('--scale-factor', scale.toString())
-        
+        const contentHeight = element.scrollHeight;
+        const pageHeight = 11 * 96 - 96; // 11 inches in pixels minus margins
+        const scale = Math.min(1, pageHeight / contentHeight);
+        element.style.setProperty("--scale-factor", scale.toString());
+
         try {
-          await html2pdf().set(opt).from(element).save()
+          await html2pdf().set(opt).from(element).save();
         } finally {
           // Clean up
-          element.classList.remove('pdf-mode')
-          element.style.removeProperty('--scale-factor')
-          styleSheet.remove()
+          element.classList.remove("pdf-mode");
+          element.style.removeProperty("--scale-factor");
+          styleSheet.remove();
         }
       }
     }
-  }
+  };
 
   const handleTemplateSelect = (template: ResumeTemplate) => {
-    setSelectedTemplate(template.id)
-    updatePreview(template.template, FONT_PAIRS.modern)
-    setIsTemplateModalOpen(false)
-  }
+    setSelectedTemplate(template.id);
+    updatePreview(template.template, FONT_PAIRS.modern);
+    setIsTemplateModalOpen(false);
+
+    // Remove the explicit guideline message
+    // Just update the backend with template selection
+  };
 
   // Update the initial template with proper Tailwind classes and better structure
   useEffect(() => {
@@ -393,22 +462,18 @@ export default function CVBuilder() {
           </main>
         </div>
       </div>
-    `
-
-    // Start with first question
-    setMessages([{
-      role: 'assistant',
-      content: RESUME_QUESTIONS[0].text
-    }])
+    `;
 
     // Initialize with a slight delay to ensure iframe is ready
     setTimeout(() => {
-      updatePreview(initialTemplate, FONT_PAIRS.modern)
-    }, 100)
-  }, [])
+      updatePreview(initialTemplate, FONT_PAIRS.modern);
+    }, 100);
+  }, []);
 
   return (
     <div className="min-h-screen bg-[#f8fafc]">
+      {isLoading && <LoadingSpinner />}
+
       <header className="bg-white border-b border-gray-100 shadow-sm">
         <div className="container mx-auto py-4 px-6">
           <div className="flex items-center justify-between">
@@ -416,10 +481,12 @@ export default function CVBuilder() {
               <h1 className="text-2xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 text-transparent bg-clip-text">
                 AI Resume Builder
               </h1>
-              <p className="text-sm text-gray-500 mt-1">Create your professional resume in minutes</p>
+              <p className="text-sm text-gray-500 mt-1">
+                Create your professional resume in minutes
+              </p>
             </div>
             <div className="flex items-center gap-4">
-              <Button 
+              <Button
                 onClick={() => setIsTemplateModalOpen(true)}
                 variant="outline"
                 className="flex items-center gap-2"
@@ -427,7 +494,7 @@ export default function CVBuilder() {
                 <LayoutTemplate className="w-4 h-4" />
                 Templates
               </Button>
-              <Button 
+              <Button
                 onClick={handleDownloadPDF}
                 className="bg-black hover:bg-gray-800 text-white rounded-full flex items-center gap-2 px-6 transition-all"
               >
@@ -445,44 +512,51 @@ export default function CVBuilder() {
           <div className="w-full lg:w-[45%] flex flex-col h-[800px] bg-white rounded-3xl shadow-[0_0_50px_-12px_rgb(0,0,0,0.05)] overflow-hidden border border-gray-100">
             <div className="p-6 border-b bg-white">
               <h2 className="text-xl font-bold text-gray-800">Resume Editor</h2>
-              <p className="text-sm text-gray-500 mt-1">Let AI help you craft the perfect resume</p>
+              <p className="text-sm text-gray-500 mt-1">
+                Let AI help you craft the perfect resume
+              </p>
             </div>
-            
-            <div 
+
+            <div
               ref={chatRef}
               className="flex-1 overflow-y-auto p-6 space-y-6"
               style={{
-                backgroundImage: 'radial-gradient(circle at center, #f8fafc 0%, #ffffff 100%)'
+                backgroundImage:
+                  "radial-gradient(circle at center, #f8fafc 0%, #ffffff 100%)",
               }}
             >
               {messages.map((message, index) => (
                 <div
                   key={index}
                   className={`${
-                    message.role === 'assistant' 
-                      ? 'bg-white rounded-2xl p-4 shadow-sm max-w-[85%] ml-2 border border-gray-100' 
-                      : 'bg-black text-white rounded-2xl p-4 shadow-sm max-w-[85%] ml-auto mr-2'
+                    message.role === "assistant"
+                      ? "bg-white rounded-2xl p-4 shadow-sm max-w-[85%] ml-2 border border-gray-100"
+                      : "bg-black text-white rounded-2xl p-4 shadow-sm max-w-[85%] ml-auto mr-2"
                   } transition-all hover:shadow-md`}
                 >
-                  <p className={`${
-                    message.role === 'assistant' ? 'text-gray-700' : 'text-white'
-                  } text-sm leading-relaxed`}>
+                  <p
+                    className={`${
+                      message.role === "assistant"
+                        ? "text-gray-700"
+                        : "text-white"
+                    } text-sm leading-relaxed`}
+                  >
                     {message.content}
                   </p>
                 </div>
               ))}
             </div>
-            
+
             <div className="p-6 bg-white border-t">
               <div className="flex gap-3 items-center">
                 <Input
                   value={inputMessage}
                   onChange={(e) => setInputMessage(e.target.value)}
-                  onKeyDown={(e) => e.key === 'Enter' && sendMessage()}
+                  onKeyDown={(e) => e.key === "Enter" && sendMessage()}
                   placeholder="Type your message..."
                   className="flex-1 rounded-full border-gray-200 focus:border-black focus:ring-1 focus:ring-black transition-all px-6"
                 />
-                <Button 
+                <Button
                   onClick={sendMessage}
                   className="bg-black hover:bg-gray-800 text-white px-6 rounded-full transition-all"
                 >
@@ -496,7 +570,9 @@ export default function CVBuilder() {
           <div className="w-full lg:w-[55%] flex flex-col">
             <div className="mb-6">
               <h2 className="text-xl font-bold text-gray-800">Live Preview</h2>
-              <p className="text-sm text-gray-500 mt-1">See your changes in real-time</p>
+              <p className="text-sm text-gray-500 mt-1">
+                See your changes in real-time
+              </p>
             </div>
             <div className="flex-1 bg-white rounded-3xl shadow-[0_0_50px_-12px_rgb(0,0,0,0.05)] overflow-hidden border border-gray-100">
               <iframe
@@ -518,6 +594,5 @@ export default function CVBuilder() {
         onSelectTemplate={handleTemplateSelect}
       />
     </div>
-  )
+  );
 }
-
